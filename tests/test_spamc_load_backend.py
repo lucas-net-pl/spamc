@@ -1,15 +1,10 @@
 import os
 import sys
 import threading
-try:
-    import unittest2
-except ImportError:
-    if sys.version_info < (2, 7):
-        raise
-    import unittest as unittest2
+import unittest as unittest2
 
 from spamc import SpamC
-from spamc import backend_eventlet
+from spamc import backend_thread
 from spamc.exceptions import SpamCError
 
 from _s import return_tcp
@@ -35,7 +30,7 @@ class TestSpamCTCP(unittest2.TestCase):
             port=int(os.environ.get('SPAMD_PORT', 10030)),
             gzip=gzip,
             compress_level=int(os.environ.get('SPAMD_COMPRESS_LEVEL', 6)),
-            backend=backend_eventlet)
+            backend=backend_thread)
         path = os.path.dirname(os.path.dirname(__file__))
         cls.filename = os.path.join(path, 'examples', 'sample-spam.txt')
 
@@ -43,6 +38,7 @@ class TestSpamCTCP(unittest2.TestCase):
     def tearDownClass(cls):
         if hasattr(cls, 'tcp_server'):
             cls.tcp_server.shutdown()
+            cls.tcp_server.server_close()
 
     def test_spamc_tcp_no_conn(self):
         spamc_tcp = SpamC(host='127.0.0.1', port=10001)
@@ -52,6 +48,7 @@ class TestSpamCTCP(unittest2.TestCase):
         result = self.spamc_tcp.ping()
         self.assertIn('message', result)
         self.assertEqual('PONG', result['message'])
+
 
 if __name__ == '__main__':
     unittest2.main()

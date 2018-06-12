@@ -1,12 +1,7 @@
 import os
 import sys
 import threading
-try:
-    import unittest2
-except ImportError:
-    if sys.version_info < (2, 7):
-        raise
-    import unittest as unittest2
+import unittest as unittest2
 
 from getpass import getuser
 

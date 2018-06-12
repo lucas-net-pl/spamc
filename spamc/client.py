@@ -21,7 +21,6 @@ client
 """
 import os
 import errno
-import types
 import socket
 
 from zlib import compress
@@ -36,10 +35,12 @@ from spamc.exceptions import SpamCError, SpamCTimeOutError, SpamCResponseError
 
 PROTOCOL_VERSION = 'SPAMC/1.5'
 
+from io import UnsupportedOperation
+
 
 def _check_action(action):
     """check for invalid actions"""
-    if isinstance(action, types.StringTypes):
+    if isinstance(action, str):
         action = action.lower()
 
     if action not in ['learn', 'forget', 'report', 'revoke']:
@@ -67,6 +68,8 @@ def get_response(cmd, conn):
         resp_dict['didremove'] = False
 
     data = resp.read()
+    if isinstance(data, bytes):
+        data = data.decode()
     lines = data.split('\r\n')
     for index, line in enumerate(lines):
         if index == 0:
@@ -192,7 +195,11 @@ class SpamC(object):
             try:
                 conn = self.get_connection()
                 if hasattr(msg, 'read') and hasattr(msg, 'fileno'):
-                    msg_length = str(os.fstat(msg.fileno()).st_size)
+                    try:
+                        msg_length = str(os.fstat(msg.fileno()).st_size)
+                    except UnsupportedOperation:
+                        msg.seek(0, 2)
+                        msg_length = str(msg.tell() + 2)
                 elif hasattr(msg, 'read'):
                     msg.seek(0, 2)
                     msg_length = str(msg.tell() + 2)
@@ -209,7 +216,7 @@ class SpamC(object):
 
                 headers = self.get_headers(cmd, msg_length, extra_headers)
 
-                if isinstance(msg, types.StringTypes):
+                if isinstance(msg, str):
                     if self.gzip and msg:
                         msg = compress(msg + '\r\n', self.compress_level)
                     else:
@@ -224,7 +231,7 @@ class SpamC(object):
                 conn.send('\r\n')
                 try:
                     conn.socket().shutdown(socket.SHUT_WR)
-                except socket.error:
+                except socket.error as er:
                     pass
                 return get_response(cmd, conn)
             except socket.gaierror as err:
@@ -240,7 +247,7 @@ class SpamC(object):
                     conn.close()
                 errors = (errno.EAGAIN, errno.EPIPE, errno.EBADF,
                           errno.ECONNRESET)
-                if err[0] not in errors or tries >= self.max_tries:
+                if err not in errors or tries >= self.max_tries:
                     raise SpamCError("socket.error: %s" % str(err))
             except BaseException:
                 if conn is not None:
@@ -313,7 +320,7 @@ class SpamC(object):
 
     def learn(self, msg, learnas):
         """Learn message as spam/ham or forget"""
-        if not isinstance(learnas, types.StringTypes):
+        if not isinstance(learnas, str):
             raise SpamCError('The learnas option is invalid')
         if learnas.lower() == 'forget':
             resp = self.tell(msg, 'forget')

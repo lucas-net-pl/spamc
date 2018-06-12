@@ -71,6 +71,8 @@ class Connector(object):
         self._connected = False
 
     def send(self, data):
+        if isinstance(data, str):
+            return self._s.sendall(data.encode())
         "send data"
         return self._s.sendall(data)
 

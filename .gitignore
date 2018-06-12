@@ -6,3 +6,7 @@
 *.pyc
 .coverage
 _build
+.project
+.pydevproject
+python/
+.settings/

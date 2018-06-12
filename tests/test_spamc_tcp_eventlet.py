@@ -1,15 +1,10 @@
 import os
 import sys
 import threading
-try:
-    import unittest2
-except ImportError:
-    if sys.version_info < (2, 7):
-        raise
-    import unittest as unittest2
+import unittest as unittest2
 
-from mimetools import Message
-from cStringIO import StringIO
+from email.message import Message
+from io import StringIO
 
 from spamc import SpamC
 from spamc.exceptions import SpamCError
@@ -45,6 +40,7 @@ class TestSpamCTCP(unittest2.TestCase):
     def tearDownClass(cls):
         if hasattr(cls, 'tcp_server'):
             cls.tcp_server.shutdown()
+            cls.tcp_server.server_close()
 
     def test_spamc_tcp_no_conn(self):
         spamc_tcp = SpamC(host='127.0.0.1', port=10001)

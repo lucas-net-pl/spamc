@@ -20,14 +20,17 @@ spamc: Python spamassassin spamc client library
 
 Copyright 2015, Andrew Colin Kissa
 Licensed under AGPLv3+
+
+Python3.5 update by Łukasz A. Grabowski
 """
 import os
 import socket
 
-from mimetools import Message
-from cStringIO import StringIO
-from SocketServer import StreamRequestHandler, ThreadingTCPServer, \
-    ThreadingUnixStreamServer
+from email.message import Message
+from email import message_from_binary_file, message_from_file
+from io import StringIO #old from cStringIO
+from socketserver import StreamRequestHandler, ThreadingTCPServer, \
+    ThreadingUnixStreamServer #old from SocketServer
 
 
 ThreadingTCPServer.allow_reuse_address = True
@@ -63,45 +66,49 @@ class TestSpamdHandler(StreamRequestHandler):
 
     def do_PING(self):
         """Emulate PING"""
-        self.wfile.write("SPAMD/1.5 0 PONG\r\n")
+        self.wfile.write("SPAMD/1.5 0 PONG\r\n".encode())
 
     def do_TELL(self):
         """Emulate TELL"""
-        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n")
+        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n".encode())
         didset = self.headers.get('Set')
         if didset:
-            self.wfile.write("DidSet: True\r\n")
+            self.wfile.write("DidSet: True\r\n".encode())
         didremove = self.headers.get('Remove')
         if didremove:
-            self.wfile.write("DidRemove: True\r\n")
-        self.wfile.write("\r\n\r\n")
+            self.wfile.write("DidRemove: True\r\n".encode())
+        self.wfile.write("\r\n\r\n".encode())
         self.close_connection = 1
 
     def do_HEADERS(self):
         """Emulate HEADERS"""
         content_length = int(self.headers.get('Content-length', 0))
         body = self.rfile.read(content_length)
+        if isinstance(body, bytes):
+            body = body.decode()
         parts, = body.split('\r\n\r\n')
-        _headers = self.MessageClass(StringIO(parts))
-        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n")
-        self.wfile.write("Spam: True ; 15 / 5\r\n")
+        _headers = message_from_file(StringIO(parts))
+        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n".encode())
+        self.wfile.write("Spam: True ; 15 / 5\r\n".encode())
         if self.request_version >= (1, 3):
-            self.wfile.write("Content-length: %d\r\n" % len(_headers))
-        self.wfile.write("\r\n\r\n")
-        self.wfile.write(_headers)
+            self.wfile.write(("Content-length: %d\r\n" % len(_headers)).encode())
+        self.wfile.write("\r\n\r\n".encode())
+        self.wfile.write(str(_headers).encode())
         self.close_connection = 1
 
     def do_PROCESS(self):
         """Emulate PROCESS"""
         content_length = int(self.headers.get('Content-length', 0))
         body = self.rfile.read(content_length)
-        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n")
-        self.wfile.write("Spam: True ; 15 / 5\r\n")
+        if isinstance(body, bytes):
+            body = body.decode()
+        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n".encode())
+        self.wfile.write("Spam: True ; 15 / 5\r\n".encode())
         if self.request_version >= (1, 3):
-            self.wfile.write(
-                "Content-length: %d\r\n" % content_length)
-        self.wfile.write("\r\n\r\n")
-        self.wfile.write(body)
+            self.wfile.write((
+                "Content-length: %d\r\n" % content_length).encode())
+        self.wfile.write("\r\n\r\n".encode())
+        self.wfile.write(body.encode())
         self.close_connection = 1
 
     def do_REPORT_IFSPAM(self):
@@ -110,45 +117,45 @@ class TestSpamdHandler(StreamRequestHandler):
 
     def do_REPORT(self):
         """Emulate REPORT"""
-        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n")
-        self.wfile.write("Spam: True ; 15 / 5\r\n")
+        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n".encode())
+        self.wfile.write("Spam: True ; 15 / 5\r\n".encode())
         if self.request_version >= (1, 3):
-            self.wfile.write(
-                "Content-length: %d\r\n" % len(REPORT_TMPL))
-        self.wfile.write("\r\n\r\n")
-        self.wfile.write(REPORT_TMPL)
+            self.wfile.write((
+                "Content-length: %d\r\n" % len(REPORT_TMPL)).encode())
+        self.wfile.write("\r\n\r\n".encode())
+        self.wfile.write(REPORT_TMPL.encode())
         self.close_connection = 1
 
     def do_SYMBOLS(self):
         """Emulate SYMBOLS"""
         rules = "BAYES_00,RDNS_NONE,KAM_LAZY_DOMAIN_SECURITY"
-        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n")
-        self.wfile.write("Spam: True ; 15 / 5\r\n")
+        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n".encode())
+        self.wfile.write("Spam: True ; 15 / 5\r\n".encode())
         if self.request_version >= (1, 3):
-            self.wfile.write("Content-length: %d\r\n" % len(rules))
-        self.wfile.write("\r\n\r\n")
-        self.wfile.write(rules)
+            self.wfile.write(("Content-length: %d\r\n" % len(rules)).encode())
+        self.wfile.write("\r\n\r\n".encode())
+        self.wfile.write(rules.encode())
         if self.request_version < (1, 3):
-            self.wfile.write("\r\n")
+            self.wfile.write("\r\n".encode())
         self.close_connection = 1
 
     def do_CHECK(self):
         """Emulate CHECK"""
-        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n")
-        self.wfile.write("Spam: True ; 15 / 5\r\n")
-        self.wfile.write("\r\n\r\n")
+        self.wfile.write("SPAMD/1.5 0 EX_OK\r\n".encode())
+        self.wfile.write("Spam: True ; 15 / 5\r\n".encode())
+        self.wfile.write("\r\n\r\n".encode())
         self.close_connection = 1
 
     def send_error(self, msg):
         """Send Error response"""
-        self.wfile.write("SPAMD/1.0 EX_PROTOCOL Bad header line: %s\r\n" % msg)
+        self.wfile.write(("SPAMD/1.0 EX_PROTOCOL Bad header line: %s\r\n" % msg).encode())
 
     def parse_request(self):
         """Parse the request"""
         self.command = None
         self.request_version = version = self.default_request_version
         self.close_connection = 1
-        requestline = self.raw_requestline
+        requestline = self.raw_requestline.decode()
         requestline = requestline.rstrip('\r\n')
         self.requestline = requestline
         words = requestline.split()
@@ -177,8 +184,8 @@ class TestSpamdHandler(StreamRequestHandler):
         else:
             self.send_error("Bad request syntax (%r)" % requestline)
             return False
-        self.command, self.request_version = command, version
-        self.headers = self.MessageClass(self.rfile, 0)
+        self.command, self.request_version = command, version_number
+        self.headers = message_from_binary_file(self.rfile)
         return True
 
     def handle_one_request(self):

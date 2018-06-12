@@ -3,18 +3,13 @@ import sys
 # import errno
 # import socket
 # import select
-import threading
-try:
-    import unittest2
-except ImportError:
-    if sys.version_info < (2, 7):
-        raise
-    import unittest as unittest2
+import unittest as unittest2
 
 # import mock
 
 from spamc import SpamC
 from spamc.utils import load_backend
+import threading
 
 from _s import return_unix
 

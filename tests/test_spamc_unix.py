@@ -2,17 +2,12 @@ import os
 import sys
 import socket
 import threading
-try:
-    import unittest2
-except ImportError:
-    if sys.version_info < (2, 7):
-        raise
-    import unittest as unittest2
+import unittest as unittest2
 
 import mock
 
-from mimetools import Message
-from cStringIO import StringIO
+from email.message import Message
+from io import StringIO
 
 from spamc import SpamC
 from spamc.exceptions import SpamCError, SpamCTimeOutError
@@ -167,7 +162,7 @@ class TestSpamCUnix(unittest2.TestCase):
                 'bogus')
 
     def test_spamc_unix_revoke(self):
-        print self.spamc_unix.host
+        print(self.spamc_unix.host)
         with open(self.filename) as handle:
             result = self.spamc_unix.revoke(handle)
         self.assertIn('message', result)
